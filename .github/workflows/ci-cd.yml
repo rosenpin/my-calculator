@@ -87,8 +87,8 @@ jobs:
           ANSIBLE_PRIVATE_KEY_FILE: /home/runner/.ssh/ansible.pem
         with:
           playbook: deploy_app.yml
-          inventory: inventory.yml
           requirements: requirements.yml
           options: |
-            --extra-vars target_env=calculator-${{ steps.target.outputs.env }}
+            -i inventory.yml
+            --extra-vars target_env=${{ steps.target.outputs.env }}
             --extra-vars app_version=${{ github.sha }}
