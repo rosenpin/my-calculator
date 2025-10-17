@@ -21,7 +21,7 @@
     const li = document.createElement("li");
     li.textContent = message;
     if (status !== "ok") {
-      li.style.borderLeftColor = "#ef476f";
+      li.style.borderLeftColor = "#ef476e";
     }
     logEl.prepend(li);
     const maxEntries = 10;
@@ -112,7 +112,7 @@
 
       buffer = data.result.toString();
       appendLog(
-        `${data.left} ${data.operator} ${data.right} = ${data.result} (${data.evaluated_at})`
+        `${data.left} ${data.operator} ${data.right} = ${data.result} (${data.evaluated_at})`,
       );
       updateEntry(buffer);
       updateOperation("Ready");

@@ -8,7 +8,7 @@ This repository demonstrates a complete provisioning and promotion pipeline for 
 - `deploy_app.yml` — installs Docker, builds the calculator web app image, deploys it as a **systemd**-managed container, and performs a health check that restarts the service if it is inactive.
 - `service_health.yml` — lightweight playbook that checks the calculator service and restarts it if it is not active (useful for demoing the auto-recovery behaviour).
 
-**Dynamic inventory:** `aws_ec2.yml` scopes hosts to instances tagged `ProvisionedBy=ansible-calculator` and automatically groups them by the `Environment` tag (development/staging/production).
+**Inventory:** `inventory.yml` hardcodes the development, staging, and production EC2 hosts with shared SSH settings.
 
 ### Provision the environments
 
@@ -27,10 +27,10 @@ Override variables such as `instance_type`, `vpc_id`, or `subnet_id` with `-e` a
 ```bash
 export ANSIBLE_PRIVATE_KEY_FILE=~/.ssh/keys/ansible-test.pem
 ansible-galaxy collection install amazon.aws community.docker
-ansible-playbook -i aws_ec2.yml deploy_app.yml -e target_env=development -e app_version=demo1
+ansible-playbook -i inventory.yml deploy_app.yml -e target_env=development -e app_version=demo1
 ```
 
-Running the playbook again (or after intentionally stopping the service) re-checks the systemd unit and restarts the container if required for presentation purposes. For a lightweight self-healing demo, run `ansible-playbook -i aws_ec2.yml service_health.yml -e target_env=production`.
+Running the playbook again (or after intentionally stopping the service) re-checks the systemd unit and restarts the container if required for presentation purposes. For a lightweight self-healing demo, run `ansible-playbook -i inventory.yml service_health.yml -e target_env=production`.
 
 ## Application
 
@@ -57,6 +57,6 @@ The workflow sets `ANSIBLE_PRIVATE_KEY_FILE` so the dynamic inventory can connec
 
 ## Maintenance Tips
 
-- Use `ansible-playbook -i aws_ec2.yml deploy_app.yml -e target_env=<env>` to redeploy after code changes or to demonstrate the auto-recovery task.
+- Use `ansible-playbook -i inventory.yml deploy_app.yml -e target_env=<env>` to redeploy after code changes or to demonstrate the auto-recovery task.
 - To clean resources after a demo, terminate the EC2 instances manually or extend `cleanup.yml` to remove the tagged hosts.
 - Update security group CIDRs in `provision_envs.yml` if you need to restrict access beyond `0.0.0.0/0`.
