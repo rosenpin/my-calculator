@@ -87,7 +87,7 @@ jobs:
           ANSIBLE_PRIVATE_KEY_FILE: /home/runner/.ssh/ansible.pem
         with:
           playbook: deploy_app.yml
-          inventory: aws_ec2.yml
+          inventory: inventory.yml
           requirements: requirements.yml
           options: |
             --extra-vars target_env=${{ steps.target.outputs.env }}
