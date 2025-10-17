@@ -16,6 +16,7 @@
     app_image_full: "{{ app_image_name }}:{{ app_version }}"
     host_http_port: "{{ app_http_port | default(80) }}"
     repo_root: "{{ playbook_dir }}/app"
+    deploy_user: "{{ ansible_user | default(ansible_ssh_user | default('ubuntu')) }}"
   pre_tasks:
     - name: Ensure target_env is valid
       ansible.builtin.assert:
@@ -46,9 +47,9 @@
         state: started
         enabled: true
 
-    - name: Add {{ ansible_user }} to docker group
+    - name: Add {{ deploy_user }} to docker group
       ansible.builtin.user:
-        name: "{{ ansible_user }}"
+        name: "{{ deploy_user }}"
         groups: docker
         append: true
       become: yes
@@ -131,8 +132,13 @@
         push: false
         force_source: true
         state: present
-        additional_tags:
-          - latest
+
+    - name: Tag calculator image as latest
+      community.docker.docker_image:
+        name: "{{ app_image_name }}"
+        tag: latest
+        source: local
+        force_tag: true
 
     - name: Create systemd unit for calculator app
       ansible.builtin.template:
