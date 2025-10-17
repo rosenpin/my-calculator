@@ -171,7 +171,6 @@
       ansible.builtin.systemd:
         name: "{{ app_name }}"
         state: restarted
-      when: calculator_service_status.stdout != "active"
 
     - name: Collect deployment facts
       ansible.builtin.set_fact:
