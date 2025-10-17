@@ -9,13 +9,16 @@
     purge_rules_egress: false
     rules:
       - proto: tcp
-        ports: [22]
+        from_port: 22
+        to_port: 22
         cidr_ip: "{{ ssh_allowed_cidr }}"
       - proto: tcp
-        ports: [{{ item.http_port }}]
+        from_port: "{{ item.http_port | int }}"
+        to_port: "{{ item.http_port | int }}"
         cidr_ip: "{{ web_allowed_cidr }}"
       - proto: tcp
-        ports: [443]
+        from_port: 443
+        to_port: 443
         cidr_ip: "{{ https_allowed_cidr }}"
     rules_egress:
       - proto: -1

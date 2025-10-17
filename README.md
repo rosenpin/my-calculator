@@ -1,13 +1,12 @@
 # Ansible Demo Playbooks
 
-This repository now demonstrates a complete provisioning and promotion pipeline for a Dockerised Flask application that is automatically promoted across **development**, **staging**, and **production** EC2 environments.
+This repository demonstrates a complete provisioning and promotion pipeline for a Dockerised Flask application that is automatically promoted across **development**, **staging**, and **production** EC2 environments.
 
 ## Infrastructure Playbooks
 
 - `provision_envs.yml` — creates three EC2 instances (development, staging, production) with consistent settings, security groups (ports 22/80/443), and identifying tags.
 - `deploy_app.yml` — installs Docker, builds the calculator web app image, deploys it as a **systemd**-managed container, and performs a health check that restarts the service if it is inactive.
-- `provision_ec2.yml` — original single-host provisioner retained for ad-hoc demos.
-- Legacy demo playbooks (`setup.yml`, `setup_with_webpage.yml`, `cleanup.yml`) are still available for reference.
+- `service_health.yml` — lightweight playbook that checks the calculator service and restarts it if it is not active (useful for demoing the auto-recovery behaviour).
 
 **Dynamic inventory:** `aws_ec2.yml` scopes hosts to instances tagged `ProvisionedBy=ansible-calculator` and automatically groups them by the `Environment` tag (development/staging/production).
 
@@ -31,13 +30,7 @@ ansible-galaxy collection install amazon.aws community.docker
 ansible-playbook -i aws_ec2.yml deploy_app.yml -e target_env=development -e app_version=demo1
 ```
 
-Running the playbook again (or after intentionally stopping the service) re-checks the systemd unit and restarts the container if required for presentation purposes.
-
-For a lightweight demo of the self-healing task:
-
-```bash
-ansible-playbook -i aws_ec2.yml service_health.yml -e target_env=production
-```
+Running the playbook again (or after intentionally stopping the service) re-checks the systemd unit and restarts the container if required for presentation purposes. For a lightweight self-healing demo, run `ansible-playbook -i aws_ec2.yml service_health.yml -e target_env=production`.
 
 ## Application
 
