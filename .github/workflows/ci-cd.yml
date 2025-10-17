@@ -88,9 +88,7 @@ jobs:
         with:
           playbook: deploy_app.yml
           inventory: aws_ec2.yml
-          collections: |
-            amazon.aws
-            community.docker
+          requirements: requirements.yml
           options: |
             --extra-vars target_env=${{ steps.target.outputs.env }}
             --extra-vars app_version=${{ github.sha }}
