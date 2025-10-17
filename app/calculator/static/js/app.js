@@ -3,6 +3,9 @@
   const operationEl = document.getElementById("operation");
   const logEl = document.getElementById("log");
   const clockEl = document.getElementById("live-clock");
+  const themeToggleBtn = document.getElementById("theme-toggle");
+  const sunIcon = document.getElementById("sun-icon");
+  const moonIcon = document.getElementById("moon-icon");
 
   let buffer = "0";
   let storedValue = null;
@@ -176,11 +179,44 @@
     }
   };
 
+  const getStoredTheme = () => {
+    return localStorage.getItem("theme") || "light";
+  };
+
+  const setTheme = (theme) => {
+    document.documentElement.setAttribute("data-theme", theme);
+    localStorage.setItem("theme", theme);
+    updateThemeIcon(theme);
+  };
+
+  const updateThemeIcon = (theme) => {
+    if (theme === "dark") {
+      sunIcon.style.display = "none";
+      moonIcon.style.display = "block";
+    } else {
+      sunIcon.style.display = "block";
+      moonIcon.style.display = "none";
+    }
+  };
+
+  const toggleTheme = () => {
+    const currentTheme = getStoredTheme();
+    const newTheme = currentTheme === "light" ? "dark" : "light";
+    setTheme(newTheme);
+  };
+
+  const initTheme = () => {
+    const storedTheme = getStoredTheme();
+    setTheme(storedTheme);
+    themeToggleBtn.addEventListener("click", toggleTheme);
+  };
+
   const init = () => {
     bindKeys();
     resetCalculator();
     updateClock();
     setInterval(updateClock, 5000);
+    initTheme();
   };
 
   document.addEventListener("DOMContentLoaded", init);
