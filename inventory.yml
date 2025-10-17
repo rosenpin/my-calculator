@@ -1,0 +1,18 @@
+all:
+  vars:
+    ansible_user: ubuntu
+    ansible_ssh_private_key_file: "{{ lookup('env', 'ANSIBLE_PRIVATE_KEY_FILE') | default('~/.ssh/keys/ansible-test.pem', true) }}"
+    ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
+  children:
+    development:
+      hosts:
+        calculator-development:
+          ansible_host: ec2-13-229-234-164.ap-southeast-1.compute.amazonaws.com
+    staging:
+      hosts:
+        calculator-staging:
+          ansible_host: ec2-52-221-229-3.ap-southeast-1.compute.amazonaws.com
+    production:
+      hosts:
+        calculator-production:
+          ansible_host: ec2-54-169-212-194.ap-southeast-1.compute.amazonaws.com
