@@ -90,5 +90,5 @@ jobs:
           inventory: inventory.yml
           requirements: requirements.yml
           options: |
-            --extra-vars target_env=${{ steps.target.outputs.env }}
+            --extra-vars target_env=calculator-${{ steps.target.outputs.env }}
             --extra-vars app_version=${{ github.sha }}
