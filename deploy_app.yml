@@ -1,0 +1,182 @@
+---
+- name: Deploy calculator application
+  hosts: "{{ target_env | default('development') }}"
+  become: yes
+  vars:
+    valid_environments:
+      - development
+      - staging
+      - production
+    target_env: "{{ target_env | default('development') }}"
+    app_name: calculator-app
+    app_root: /opt/calculator-app
+    container_name: "{{ app_name }}-{{ target_env }}"
+    app_image_name: calculator-app
+    app_version: "{{ app_version | default('latest') }}"
+    app_image_full: "{{ app_image_name }}:{{ app_version }}"
+    host_http_port: "{{ app_http_port | default(80) }}"
+    repo_root: "{{ playbook_dir }}/app"
+  pre_tasks:
+    - name: Ensure target_env is valid
+      ansible.builtin.assert:
+        that:
+          - target_env in valid_environments
+        fail_msg: "target_env must be one of {{ valid_environments }}"
+  tasks:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Install required packages
+      ansible.builtin.apt:
+        name:
+          - docker.io
+          - python3-pip
+          - git
+        state: present
+
+    - name: Install docker python package
+      ansible.builtin.pip:
+        name: docker
+
+    - name: Ensure docker service is running
+      ansible.builtin.systemd:
+        name: docker
+        state: started
+        enabled: true
+
+    - name: Add {{ ansible_user }} to docker group
+      ansible.builtin.user:
+        name: "{{ ansible_user }}"
+        groups: docker
+        append: true
+      become: yes
+
+    - name: Create application directory structure
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: "0755"
+      loop:
+        - "{{ app_root }}"
+        - "{{ app_root }}/src"
+        - "{{ app_root }}/src/calculator"
+        - "{{ app_root }}/src/calculator/templates"
+        - "{{ app_root }}/src/calculator/static"
+        - "{{ app_root }}/src/calculator/static/css"
+        - "{{ app_root }}/src/calculator/static/js"
+
+    - name: Copy Dockerfile
+      ansible.builtin.copy:
+        src: "{{ repo_root }}/Dockerfile"
+        dest: "{{ app_root }}/src/Dockerfile"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Copy requirements.txt
+      ansible.builtin.copy:
+        src: "{{ repo_root }}/requirements.txt"
+        dest: "{{ app_root }}/src/requirements.txt"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Copy calculator package files
+      ansible.builtin.copy:
+        src: "{{ repo_root }}/calculator/{{ item }}"
+        dest: "{{ app_root }}/src/calculator/{{ item }}"
+        owner: root
+        group: root
+        mode: "0644"
+      loop:
+        - "__init__.py"
+        - "app.py"
+
+    - name: Copy calculator templates
+      ansible.builtin.copy:
+        src: "{{ repo_root }}/calculator/templates/index.html"
+        dest: "{{ app_root }}/src/calculator/templates/index.html"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Copy calculator CSS assets
+      ansible.builtin.copy:
+        src: "{{ repo_root }}/calculator/static/css/style.css"
+        dest: "{{ app_root }}/src/calculator/static/css/style.css"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Copy calculator JavaScript assets
+      ansible.builtin.copy:
+        src: "{{ repo_root }}/calculator/static/js/app.js"
+        dest: "{{ app_root }}/src/calculator/static/js/app.js"
+        owner: root
+        group: root
+        mode: "0644"
+
+    - name: Build calculator docker image
+      community.docker.docker_image:
+        name: "{{ app_image_name }}"
+        tag: "{{ app_version }}"
+        source: build
+        build:
+          path: "{{ app_root }}/src"
+          pull: true
+        push: false
+        force_source: true
+        state: present
+        additional_tags:
+          - latest
+
+    - name: Create systemd unit for calculator app
+      ansible.builtin.template:
+        src: templates/calculator-app.service.j2
+        dest: /etc/systemd/system/{{ app_name }}.service
+        owner: root
+        group: root
+        mode: "0644"
+      vars:
+        service_container_name: "{{ container_name }}"
+        service_image: "{{ app_image_full }}"
+        service_port: "{{ host_http_port }}"
+        service_env: "{{ target_env }}"
+
+    - name: Reload systemd daemon
+      ansible.builtin.systemd:
+        daemon_reload: true
+
+    - name: Ensure calculator service is enabled and running
+      ansible.builtin.systemd:
+        name: "{{ app_name }}"
+        state: started
+        enabled: true
+
+    - name: Gather service status
+      ansible.builtin.command: systemctl is-active {{ app_name }}
+      register: calculator_service_status
+      changed_when: false
+      failed_when: false
+
+    - name: Restart calculator service when inactive
+      ansible.builtin.systemd:
+        name: "{{ app_name }}"
+        state: restarted
+      when: calculator_service_status.stdout != "active"
+
+    - name: Collect deployment facts
+      ansible.builtin.set_fact:
+        calculator_app_result:
+          environment: "{{ target_env }}"
+          host: "{{ inventory_hostname }}"
+          image: "{{ app_image_full }}"
+          service_state: "{{ calculator_service_status.stdout }}"
+
+    - name: Display deployment summary
+      ansible.builtin.debug:
+        var: calculator_app_result

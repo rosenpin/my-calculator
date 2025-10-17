@@ -1,0 +1,14 @@
+[Unit]
+Description=Calculator Application Container ({{ service_env }})
+Requires=docker.service
+After=docker.service
+
+[Service]
+Restart=always
+RestartSec=5
+ExecStartPre=-/usr/bin/docker rm -f {{ service_container_name }}
+ExecStart=/usr/bin/docker run --rm --name {{ service_container_name }} -p {{ service_port }}:8080 {{ service_image }}
+ExecStop=/usr/bin/docker stop {{ service_container_name }}
+
+[Install]
+WantedBy=multi-user.target

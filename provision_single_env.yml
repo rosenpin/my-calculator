@@ -1,0 +1,84 @@
+---
+- name: Ensure security group exists for {{ item.name }}
+  amazon.aws.ec2_security_group:
+    name: "{{ item.security_group_name }}"
+    description: "Calculator {{ item.name }} security group"
+    region: "{{ region }}"
+    vpc_id: "{{ target_vpc_id }}"
+    purge_rules: false
+    purge_rules_egress: false
+    rules:
+      - proto: tcp
+        ports: [22]
+        cidr_ip: "{{ ssh_allowed_cidr }}"
+      - proto: tcp
+        ports: [{{ item.http_port }}]
+        cidr_ip: "{{ web_allowed_cidr }}"
+      - proto: tcp
+        ports: [443]
+        cidr_ip: "{{ https_allowed_cidr }}"
+    rules_egress:
+      - proto: -1
+        cidr_ip: 0.0.0.0/0
+  register: sg_result
+
+- name: Launch or ensure calculator instance for {{ item.name }}
+  amazon.aws.ec2_instance:
+    name: "{{ item.instance_name }}"
+    region: "{{ region }}"
+    key_name: "{{ key_name }}"
+    instance_type: "{{ instance_type }}"
+    image_id: "{{ selected_image_id }}"
+    wait: true
+    exact_count: 1
+    filters:
+      "tag:Name": "{{ item.instance_name }}"
+    tags:
+      Name: "{{ item.instance_name }}"
+      Environment: "{{ item.name }}"
+      App: calculator
+      ProvisionedBy: ansible-calculator
+    security_group: "{{ item.security_group_name }}"
+    network:
+      assign_public_ip: true
+      subnet_id: "{{ item.subnet_id | default(subnet_id | default(omit)) }}"
+  register: provision_result
+
+- name: Look up calculator instance data for {{ item.name }}
+  amazon.aws.ec2_instance_info:
+    region: "{{ region }}"
+    filters:
+      "tag:Name": "{{ item.instance_name }}"
+      instance-state-name:
+        - pending
+        - running
+        - stopping
+        - stopped
+  register: matched_instances
+
+- name: Ensure instance details for {{ item.name }} are available
+  ansible.builtin.fail:
+    msg: "Unable to find instance tagged {{ item.instance_name }} after provisioning."
+  when: matched_instances.instances | length == 0
+
+- name: Record launched instance for {{ item.name }}
+  ansible.builtin.set_fact:
+    launched_instance: "{{ matched_instances.instances[0] }}"
+
+- name: Wait for SSH to become reachable for {{ item.name }}
+  ansible.builtin.wait_for:
+    host: "{{ launched_instance.public_ip_address }}"
+    port: 22
+    timeout: 320
+    state: started
+
+- name: Add {{ item.name }} host to in-memory inventory
+  ansible.builtin.add_host:
+    name: "{{ launched_instance.public_dns_name | default(launched_instance.public_ip_address) }}"
+    ansible_host: "{{ launched_instance.public_ip_address }}"
+    ansible_user: "{{ ansible_remote_user }}"
+    ansible_ssh_private_key_file: "{{ ansible_ssh_private_key_file }}"
+    ansible_ssh_common_args: "-o StrictHostKeyChecking=no"
+    groups:
+      - "{{ item.name }}"
+      - calculator_environments

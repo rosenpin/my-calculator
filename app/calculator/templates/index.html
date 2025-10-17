@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, shrink-to-fit=no"
+    />
+    <title>Retro Calculator</title>
+    <link
+      rel="stylesheet"
+      href="{{ url_for('static', filename='css/style.css') }}"
+    />
+  </head>
+  <body>
+    <main class="console">
+      <header class="console__header">
+        <h1>RetroCalc 84</h1>
+        <p class="console__subtitle">
+          Served by Ansible · Built {{ generated_at }}
+        </p>
+        <p id="live-clock" class="console__clock">--:--:--</p>
+      </header>
+
+      <section class="console__display">
+        <div id="entry" class="display__entry">0</div>
+        <div id="operation" class="display__operation">Ready</div>
+      </section>
+
+      <section class="console__keypad">
+        <div class="keypad__row">
+          <button data-action="clear" class="key key--function">AC</button>
+          <button data-action="sign" class="key key--function">±</button>
+          <button data-action="percent" class="key key--function">%</button>
+          <button data-value="÷" class="key key--operator">÷</button>
+        </div>
+        <div class="keypad__row">
+          <button data-value="7" class="key">7</button>
+          <button data-value="8" class="key">8</button>
+          <button data-value="9" class="key">9</button>
+          <button data-value="×" class="key key--operator">×</button>
+        </div>
+        <div class="keypad__row">
+          <button data-value="4" class="key">4</button>
+          <button data-value="5" class="key">5</button>
+          <button data-value="6" class="key">6</button>
+          <button data-value="-" class="key key--operator">-</button>
+        </div>
+        <div class="keypad__row">
+          <button data-value="1" class="key">1</button>
+          <button data-value="2" class="key">2</button>
+          <button data-value="3" class="key">3</button>
+          <button data-value="+" class="key key--operator">+</button>
+        </div>
+        <div class="keypad__row">
+          <button data-value="0" class="key key--wide">0</button>
+          <button data-value="." class="key">.</button>
+          <button data-action="equals" class="key key--operator">=</button>
+        </div>
+      </section>
+    </main>
+
+    <section class="console__log">
+      <h2>Session Log</h2>
+      <ul id="log"></ul>
+    </section>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+  </body>
+</html>

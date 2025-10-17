@@ -1,0 +1,33 @@
+---
+- name: Verify calculator service health
+  hosts: "{{ target_env | default('development') }}"
+  become: yes
+  vars:
+    valid_environments:
+      - development
+      - staging
+      - production
+    target_env: "{{ target_env | default('development') }}"
+    app_name: calculator-app
+  tasks:
+    - name: Ensure target_env is valid
+      ansible.builtin.assert:
+        that:
+          - target_env in valid_environments
+        fail_msg: "target_env must be one of {{ valid_environments }}"
+
+    - name: Check calculator service status
+      ansible.builtin.command: systemctl is-active {{ app_name }}
+      register: calculator_service_status
+      changed_when: false
+      failed_when: false
+
+    - name: Restart calculator app when inactive
+      ansible.builtin.systemd:
+        name: "{{ app_name }}"
+        state: restarted
+      when: calculator_service_status.stdout != "active"
+
+    - name: Report calculator service state
+      ansible.builtin.debug:
+        msg: "calculator-app is {{ calculator_service_status.stdout | default('unknown') }}"

@@ -1,0 +1,80 @@
+---
+- name: Provision calculator environments
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    region: ap-southeast-1
+    key_name: ansible-test
+    instance_type: t3.small
+    ssh_allowed_cidr: 0.0.0.0/0
+    web_allowed_cidr: 0.0.0.0/0
+    https_allowed_cidr: 0.0.0.0/0
+    ansible_remote_user: ubuntu
+    ansible_ssh_private_key_file: ~/.ssh/keys/ansible-test.pem
+    environments:
+      - name: development
+        instance_name: calculator-development
+        security_group_name: calculator-development-sg
+        http_port: 80
+      - name: staging
+        instance_name: calculator-staging
+        security_group_name: calculator-staging-sg
+        http_port: 80
+      - name: production
+        instance_name: calculator-production
+        security_group_name: calculator-production-sg
+        http_port: 80
+  tasks:
+    - name: Use provided VPC when supplied
+      ansible.builtin.set_fact:
+        target_vpc_id: "{{ vpc_id }}"
+      when:
+        - vpc_id is defined
+        - vpc_id | length > 0
+
+    - name: Look up default VPC in region
+      amazon.aws.ec2_vpc_net_info:
+        region: "{{ region }}"
+        filters:
+          isDefault: true
+      register: default_vpc
+      when: target_vpc_id is not defined
+
+    - name: Select default VPC
+      ansible.builtin.set_fact:
+        target_vpc_id: "{{ default_vpc.vpcs[0].vpc_id }}"
+      when:
+        - target_vpc_id is not defined
+        - default_vpc.vpcs | length > 0
+
+    - name: Ensure a VPC is available
+      ansible.builtin.fail:
+        msg: "No VPC found. Provide vpc_id explicitly or ensure the region has a default VPC."
+      when: target_vpc_id is not defined
+
+    - name: Look up latest Ubuntu 22.04 LTS AMI
+      amazon.aws.ec2_ami_info:
+        region: "{{ region }}"
+        owners: ['099720109477']
+        filters:
+          name: ubuntu/images/hvm-ssd/ubuntu-jammy-22.04-amd64-server-*
+          architecture: x86_64
+          root-device-type: ebs
+          virtualization-type: hvm
+      register: ubuntu_amis
+
+    - name: Fail when no Ubuntu AMI is found
+      ansible.builtin.fail:
+        msg: "Unable to locate an Ubuntu 22.04 LTS AMI in {{ region }}."
+      when: ubuntu_amis.images | length == 0
+
+    - name: Choose most recent Ubuntu AMI
+      ansible.builtin.set_fact:
+        selected_image_id: "{{ ((ubuntu_amis.images | sort(attribute='creation_date')) | last).image_id }}"
+
+    - name: Provision each environment
+      ansible.builtin.include_tasks: provision_single_env.yml
+      loop: "{{ environments }}"
+      loop_control:
+        label: "{{ item.name }}"
