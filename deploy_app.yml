@@ -134,11 +134,9 @@
         state: present
 
     - name: Tag calculator image as latest
-      community.docker.docker_image:
-        name: "{{ app_image_name }}"
-        tag: latest
-        source: local
-        force_tag: true
+      ansible.builtin.command: >
+        docker tag {{ app_image_name }}:{{ app_version }} {{ app_image_name }}:latest
+      changed_when: false
 
     - name: Create systemd unit for calculator app
       ansible.builtin.template:
